@@ -72,37 +72,38 @@ class ShardClient(SimpleClient):
     def __init__(self, shard_master_address: str):
         self.channel = grpc.insecure_channel(shard_master_address)
         self.stub = ShardMasterStub(self.channel)
-        """
-        To fill with your code
-        """
 
     def get(self, key: int) -> Union[str, None]:
-        """
-        To fill with your code
-        """
+        queryResponse = self.stub.Query(QueryRequest(key=key))
+        kvChannel = grpc.insecure_channel(queryResponse.server)
+        kvStub = KVStoreStub(kvChannel)
+        return _get_return(kvStub.Get(GetRequest(key=key)))
 
     def l_pop(self, key: int) -> Union[str, None]:
-        """
-        To fill with your code
-        """
-
+        queryResponse = self.stub.Query(QueryRequest(key=key))
+        kvChannel = grpc.insecure_channel(queryResponse.server)
+        kvStub = KVStoreStub(kvChannel)
+        return _get_return(kvStub.LPop(GetRequest(key=key)))
 
     def r_pop(self, key: int) -> Union[str, None]:
-        """
-        To fill with your code
-        """
+        queryResponse = self.stub.Query(QueryRequest(key=key))
+        kvChannel = grpc.insecure_channel(queryResponse.server)
+        kvStub = KVStoreStub(kvChannel)
+        return _get_return(kvStub.RPop(GetRequest(key=key)))
 
 
     def put(self, key: int, value: str):
-        """
-        To fill with your code
-        """
+        queryResponse = self.stub.Query(QueryRequest(key=key))
+        kvChannel = grpc.insecure_channel(queryResponse.server)
+        kvStub = KVStoreStub(kvChannel)
+        return _get_return(kvStub.Put(PutRequest(key=key,value=value)))
 
 
     def append(self, key: int, value: str):
-        """
-        To fill with your code
-        """
+        queryResponse = self.stub.Query(QueryRequest(key=key))
+        kvChannel = grpc.insecure_channel(queryResponse.server)
+        kvStub = KVStoreStub(kvChannel)
+        return _get_return(kvStub.Append(AppendRequest(key=key,value=value)))
 
 
 class ShardReplicaClient(ShardClient):
