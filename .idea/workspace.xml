@@ -6,7 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="0ac9b449-4b95-4684-b138-d2a323975f00" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/KVStore/kvstorage/kvstorage.py" beforeDir="false" afterPath="$PROJECT_DIR$/KVStore/kvstorage/kvstorage.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/KVStore/clients/clients.py" beforeDir="false" afterPath="$PROJECT_DIR$/KVStore/clients/clients.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -53,7 +53,7 @@
       <option name="presentableId" value="Default" />
       <updated>1686911129380</updated>
       <workItem from="1686911130595" duration="1207000" />
-      <workItem from="1686912354386" duration="5866000" />
+      <workItem from="1686912354386" duration="8299000" />
     </task>
     <servers />
   </component>
