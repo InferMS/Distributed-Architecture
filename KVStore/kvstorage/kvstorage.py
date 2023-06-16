@@ -1,3 +1,4 @@
+import threading
 import time
 import random
 from typing import Dict, Union, List
@@ -47,7 +48,6 @@ class KVStorageService:
 
 
 class KVStorageSimpleService(KVStorageService):
-
 
     def __init__(self):
         self.storage: Dict[int, str] = {}
@@ -133,34 +133,49 @@ class KVStorageServicer(KVStoreServicer):
 
     def __init__(self, service: KVStorageService):
         self.storage_service = service
-        """
-        To fill with your code
-        """
+        self.kv_lock = threading.Lock()
 
     def Get(self, request: GetRequest, context) -> GetResponse:
-        """
-        To fill with your code
-        """
+        self.kv_lock.acquire()
+        response = GetResponse(value=self.storage_service.get(
+            key=request.key
+        ))
+        self.kv_lock.release()
+        return response
 
     def LPop(self, request: GetRequest, context) -> GetResponse:
-        """
-        To fill with your code
-        """
+        self.kv_lock.acquire()
+        response = GetResponse(value=self.storage_service.l_pop(
+            key=request.key
+        ))
+        self.kv_lock.release()
+        return response
 
     def RPop(self, request: GetRequest, context) -> GetResponse:
-        """
-        To fill with your code
-        """
+        self.kv_lock.acquire()
+        response = GetResponse(value=self.storage_service.r_pop(
+            key=request.key
+        ))
+        self.kv_lock.release()
+        return response
 
     def Put(self, request: PutRequest, context) -> google_dot_protobuf_dot_empty__pb2.Empty:
-        """
-        To fill with your code
-        """
+        self.kv_lock.acquire()
+        response = GetResponse(value=self.storage_service.put(
+            key=request.key,
+            value=request.value
+        ))
+        self.kv_lock.release()
+        return google_dot_protobuf_dot_empty__pb2.Empty()
 
     def Append(self, request: AppendRequest, context) -> google_dot_protobuf_dot_empty__pb2.Empty:
-        """
-        To fill with your code
-        """
+        self.kv_lock.acquire()
+        response = GetResponse(value=self.storage_service.append(
+            key=request.key,
+            value=request.value
+        ))
+        self.kv_lock.release()
+        return google_dot_protobuf_dot_empty__pb2.Empty()
 
     def Redistribute(self, request: RedistributeRequest, context) -> google_dot_protobuf_dot_empty__pb2.Empty:
         """
