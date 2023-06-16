@@ -87,12 +87,12 @@ class KVStorageSimpleService(KVStorageService):
                     value=v
                 )
             )
-        print("sisisi")
+
         dest_server_channel = grpc.insecure_channel(destination_server)
         KVStoreStub(dest_server_channel).Transfer(
             TransferRequest(keys_values=touples)
         )
-        print("ñiñi")
+
 
     def transfer(self, keys_values: List[KeyValue]):
         for touple in keys_values:
@@ -154,6 +154,7 @@ class KVStorageServicer(KVStoreServicer):
         response = GetResponse(value=self.storage_service.get(
             key=request.key
         ))
+
         self.kv_lock.release()
         return response
 
@@ -191,24 +192,20 @@ class KVStorageServicer(KVStoreServicer):
         return google_dot_protobuf_dot_empty__pb2.Empty()
 
     def Redistribute(self, request: RedistributeRequest, context) -> google_dot_protobuf_dot_empty__pb2.Empty:
-        print("uwu")
         self.kv_lock.acquire()
         self.storage_service.redistribute(
             destination_server=request.destination_server,
             lower_val=request.lower_val,
             upper_val=request.upper_val
         )
-        print("yes")
         self.kv_lock.release()
         return google_dot_protobuf_dot_empty__pb2.Empty()
 
     def Transfer(self, request: TransferRequest, context) -> google_dot_protobuf_dot_empty__pb2.Empty:
         self.kv_lock.acquire()
-        print("transfer")
         self.storage_service.transfer(
             keys_values=list(request.keys_values)
         )
-        print("transferido")
         self.kv_lock.release()
         return google_dot_protobuf_dot_empty__pb2.Empty()
 

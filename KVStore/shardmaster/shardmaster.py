@@ -42,7 +42,6 @@ class ShardMasterSimpleService(ShardMasterService):
         self.range_servers[server] = (None, None)
         num_servers = len(self.range_servers)
         name_servers = list(self.range_servers.keys())
-        print(name_servers)
 
         for i, server in enumerate(name_servers):
             start = int((i / num_servers) * KEYS_UPPER_THRESHOLD)
@@ -61,7 +60,6 @@ class ShardMasterSimpleService(ShardMasterService):
                 )
 
     def leave(self, server: str):
-
         if server not in self.range_servers or not self.range_servers:
             return
 
@@ -69,24 +67,26 @@ class ShardMasterSimpleService(ShardMasterService):
         num_servers = len(self.range_servers)
         name_servers = list(self.range_servers.keys())
 
-        for i in range(num_servers):
+        for i, server in enumerate(name_servers):
             start = int((i / num_servers) * KEYS_UPPER_THRESHOLD)
             end = int(((i + 1) / num_servers) * KEYS_UPPER_THRESHOLD)
-            self.range_servers[name_servers[i]] = (start, end)
+            nextTh = int(((i + 2) / num_servers) * KEYS_UPPER_THRESHOLD)
+            self.range_servers[server] = (start, end)
 
             if i != num_servers - 1:
                 next_server = name_servers[i + 1]
-                KVStoreStub(grpc.insecure_channel(name_servers[i])).Redistribute(
-                    RedistributeRequest(destination_server=next_server,
-                                        lower_val=end,
-                                        upper_val=self.range_servers[next_server][0]))
+                KVStoreStub(grpc.insecure_channel(server)).Redistribute(
+                    RedistributeRequest(
+                        destination_server=next_server,
+                        lower_val=end,
+                        upper_val=nextTh
+                    )
+                )
 
     def query(self, key: int) -> str:
-        num_servers = len(self.range_servers)
-        name_servers = list(self.range_servers.keys())
-        for i in range(num_servers):
-            if self.range_servers[name_servers[i]][0] < key < self.range_servers[name_servers[i]][0]:
-                return name_servers[i]
+        for server, minMax in self.range_servers.items():
+            if minMax[0] <= key <= minMax[1]:
+                return server
 
 
 class ShardMasterReplicasService(ShardMasterSimpleService):
