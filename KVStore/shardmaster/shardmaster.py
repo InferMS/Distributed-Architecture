@@ -39,21 +39,26 @@ class ShardMasterSimpleService(ShardMasterService):
             self.range_servers[server] = (KEYS_LOWER_THRESHOLD, KEYS_UPPER_THRESHOLD)
             return
 
-        self.range_servers[server] = ""
+        self.range_servers[server] = (None, None)
         num_servers = len(self.range_servers)
         name_servers = list(self.range_servers.keys())
+        print(name_servers)
 
-        for i in range(num_servers):
+        for i, server in enumerate(name_servers):
             start = int((i / num_servers) * KEYS_UPPER_THRESHOLD)
             end = int(((i + 1) / num_servers) * KEYS_UPPER_THRESHOLD)
-            self.range_servers[name_servers[i]] = (start, end)
+            nextTh = int(((i + 2) / num_servers) * KEYS_UPPER_THRESHOLD)
+            self.range_servers[server] = (start, end)
 
-            if i < range(num_servers):
+            if i != num_servers-1:
                 next_server = name_servers[i + 1]
-                KVStoreStub(grpc.insecure_channel(name_servers[i])).Redistribute(
-                    RedistributeRequest(destination_server=next_server,
-                                        lower_val=end,
-                                        upper_val=self.range_servers[next_server][0]))
+                KVStoreStub(grpc.insecure_channel(server)).Redistribute(
+                    RedistributeRequest(
+                        destination_server=next_server,
+                        lower_val=end,
+                        upper_val=nextTh
+                    )
+                )
 
     def leave(self, server: str):
 
@@ -69,7 +74,7 @@ class ShardMasterSimpleService(ShardMasterService):
             end = int(((i + 1) / num_servers) * KEYS_UPPER_THRESHOLD)
             self.range_servers[name_servers[i]] = (start, end)
 
-            if i < num_servers - 1:
+            if i != num_servers - 1:
                 next_server = name_servers[i + 1]
                 KVStoreStub(grpc.insecure_channel(name_servers[i])).Redistribute(
                     RedistributeRequest(destination_server=next_server,
@@ -114,8 +119,8 @@ class ShardMasterServicer(ShardMasterServicer):
 
     def Join(self, request: JoinRequest, context) -> google_dot_protobuf_dot_empty__pb2.Empty:
         self.shard_lock.acquire()
-        response = JoinRequest(
-            server=self.shard_master_service.join(request.server)
+        self.shard_master_service.join(
+            server=request.server
         )
         self.shard_lock.release()
         return google_dot_protobuf_dot_empty__pb2.Empty()

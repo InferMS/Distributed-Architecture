@@ -76,13 +76,27 @@ class KVStorageSimpleService(KVStorageService):
         self.storage[key] = self.storage.get(key, '') + value
 
     def redistribute(self, destination_server: str, lower_val: int, upper_val: int):
-        '''aa'''
+        touples = []
+        for k in range(lower_val, upper_val):
+            v = self.get(k)
+            if v is None:
+                continue
+            touples.append(
+                KeyValue(
+                    key=k,
+                    value=v
+                )
+            )
+        print("sisisi")
+        dest_server_channel = grpc.insecure_channel(destination_server)
+        KVStoreStub(dest_server_channel).Transfer(
+            TransferRequest(keys_values=touples)
+        )
+        print("ñiñi")
 
     def transfer(self, keys_values: List[KeyValue]):
-        """
-        To fill with your code
-        """
-
+        for touple in keys_values:
+            self.storage[touple.key] = touple.value
 
 class KVStorageReplicasService(KVStorageSimpleService):
     role: Role
@@ -161,31 +175,42 @@ class KVStorageServicer(KVStoreServicer):
 
     def Put(self, request: PutRequest, context) -> google_dot_protobuf_dot_empty__pb2.Empty:
         self.kv_lock.acquire()
-        response = GetResponse(value=self.storage_service.put(
+        self.storage_service.put(
             key=request.key,
-            value=request.value
-        ))
+            value=request.value)
         self.kv_lock.release()
         return google_dot_protobuf_dot_empty__pb2.Empty()
 
     def Append(self, request: AppendRequest, context) -> google_dot_protobuf_dot_empty__pb2.Empty:
         self.kv_lock.acquire()
-        response = GetResponse(value=self.storage_service.append(
+        self.storage_service.append(
             key=request.key,
             value=request.value
-        ))
+        )
         self.kv_lock.release()
         return google_dot_protobuf_dot_empty__pb2.Empty()
 
     def Redistribute(self, request: RedistributeRequest, context) -> google_dot_protobuf_dot_empty__pb2.Empty:
-        """
-        To fill with your code
-        """
+        print("uwu")
+        self.kv_lock.acquire()
+        self.storage_service.redistribute(
+            destination_server=request.destination_server,
+            lower_val=request.lower_val,
+            upper_val=request.upper_val
+        )
+        print("yes")
+        self.kv_lock.release()
+        return google_dot_protobuf_dot_empty__pb2.Empty()
 
     def Transfer(self, request: TransferRequest, context) -> google_dot_protobuf_dot_empty__pb2.Empty:
-        """
-        To fill with your code
-        """
+        self.kv_lock.acquire()
+        print("transfer")
+        self.storage_service.transfer(
+            keys_values=list(request.keys_values)
+        )
+        print("transferido")
+        self.kv_lock.release()
+        return google_dot_protobuf_dot_empty__pb2.Empty()
 
     def AddReplica(self, request: ServerRequest, context) -> google_dot_protobuf_dot_empty__pb2.Empty:
         """

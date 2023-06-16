@@ -18,6 +18,9 @@ WAIT_TIME = 0.5
 SHARDMASTER_PORT = 52003
 STORAGE_PORTS = [52004 + i for i in range(100)]
 
+KEYS_LOWER_THRESHOLD = 0
+KEYS_UPPER_THRESHOLD = 100
+
 
 def get_port():
     return STORAGE_PORTS.pop(random.randrange(len(STORAGE_PORTS)))
