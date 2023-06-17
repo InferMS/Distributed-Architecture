@@ -156,7 +156,6 @@ class KVStorageReplicasService(KVStorageSimpleService):
                     value=v
                 )
             )
-        # print(f"server: {server}, tuplas: {touples}")
         if touples:
             dest_server_channel = grpc.insecure_channel(server)
             print(f"intentando conectar al server {server}")

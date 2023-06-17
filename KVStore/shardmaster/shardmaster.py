@@ -136,15 +136,10 @@ class ShardMasterReplicasService(ShardMasterSimpleService):
         return Role.Value("REPLICA")
 
     def query_replica(self, key: int, op: Operation) -> str:
-        # print(self.replica_map)
-        # print(f"query al shard para operation {op} a la clave {key}")
         server = super().query(key)
-        # op==0 si es una lectura en las replicas
         if op == 0 or op == 3 or op == 4:
             server_replica = random.choice(self.replica_map[server]) or server
-            # print(f"Para esta operación toca la replica, {server_replica}")
             return server_replica
-        # print(f"Para esta operación toca el master, {server}")
         return server
 
 
