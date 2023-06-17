@@ -1,5 +1,6 @@
 import logging
 import threading
+import random
 
 import grpc
 
@@ -49,7 +50,7 @@ class ShardMasterSimpleService(ShardMasterService):
             nextTh = int(((i + 2) / num_servers) * KEYS_UPPER_THRESHOLD)
             self.range_servers[server] = (start, end)
 
-            if i != num_servers-1:
+            if i != num_servers - 1:
                 next_server = name_servers[i + 1]
                 KVStoreStub(grpc.insecure_channel(server)).Redistribute(
                     RedistributeRequest(
@@ -92,24 +93,59 @@ class ShardMasterSimpleService(ShardMasterService):
 class ShardMasterReplicasService(ShardMasterSimpleService):
     def __init__(self, number_of_shards: int):
         super().__init__()
-        """
-        To fill with your code
-        """
+        self.number_of_shards = number_of_shards
+        self.number_of_replicas = 0
+        self.replica_map = {}
 
     def leave(self, server: str):
-        """
-        To fill with your code
-        """
+        if server in self.range_servers:
+            super().leave(server)
+
+        else:
+            for server, replica_arr in self.replica_map.items():
+                if server in replica_arr:
+                    replica_arr.remove(server)
+                    stub = KVStoreStub(grpc.insecure_channel(server))
+                    stub.RemoveReplica(
+                        ServerRequest(
+                            server=server))
+        self.number_of_replicas -= 1
 
     def join_replica(self, server: str) -> Role:
-        """
-        To fill with your code
-        """
+        if len(self.range_servers) < self.number_of_shards:
+            super().join(server)
+            self.replica_map[server] = []
+            self.replica_map[server].append(server)
+            return Role.Value("MASTER")
+
+        mod = self.number_of_replicas % self.number_of_shards
+        master = list(self.replica_map.keys())[mod]
+        self.replica_map[master].append(server)
+        self.number_of_replicas += 1
+
+        master_stub = KVStoreStub(
+            grpc.insecure_channel(master)
+        )
+
+        master_stub.AddReplica(
+            ServerRequest(
+                server=server
+            )
+        )
+
+        return Role.Value("REPLICA")
 
     def query_replica(self, key: int, op: Operation) -> str:
-        """
-        To fill with your code
-        """
+        # print(self.replica_map)
+        # print(f"query al shard para operation {op} a la clave {key}")
+        server = super().query(key)
+        # op==0 si es una lectura en las replicas
+        if op == 0 or op == 3 or op == 4:
+            server_replica = random.choice(self.replica_map[server]) or server
+            # print(f"Para esta operación toca la replica, {server_replica}")
+            return server_replica
+        # print(f"Para esta operación toca el master, {server}")
+        return server
 
 
 class ShardMasterServicer(ShardMasterServicer):
@@ -133,7 +169,6 @@ class ShardMasterServicer(ShardMasterServicer):
         self.shard_lock.release()
         return google_dot_protobuf_dot_empty__pb2.Empty()
 
-
     def Query(self, request: QueryRequest, context) -> QueryResponse:
         self.shard_lock.acquire()
         response = QueryResponse(
@@ -142,13 +177,19 @@ class ShardMasterServicer(ShardMasterServicer):
         self.shard_lock.release()
         return response
 
-
     def JoinReplica(self, request: JoinRequest, context) -> JoinReplicaResponse:
-        """
-        To fill with your code
-        """
+        self.shard_lock.acquire()
+        response = JoinReplicaResponse(
+            role=self.shard_master_service.join_replica(request.server)
+        )
+        self.shard_lock.release()
+        return response
 
     def QueryReplica(self, request: QueryReplicaRequest, context) -> QueryResponse:
-        """
-        To fill with your code
-        """
+        self.shard_lock.acquire()
+        response = QueryResponse(
+            server=self.shard_master_service.query_replica(request.key,
+                                                           request.operation)
+        )
+        self.shard_lock.release()
+        return response

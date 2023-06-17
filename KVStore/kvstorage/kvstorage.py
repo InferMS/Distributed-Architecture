@@ -4,6 +4,8 @@ import random
 from typing import Dict, Union, List
 import logging
 import grpc
+import sched
+
 from KVStore.protos.kv_store_pb2 import *
 from KVStore.protos.kv_store_pb2_grpc import KVStoreServicer, KVStoreStub
 
@@ -87,16 +89,17 @@ class KVStorageSimpleService(KVStorageService):
                     value=v
                 )
             )
+            self.storage.pop(k)
 
         dest_server_channel = grpc.insecure_channel(destination_server)
         KVStoreStub(dest_server_channel).Transfer(
             TransferRequest(keys_values=touples)
         )
 
-
     def transfer(self, keys_values: List[KeyValue]):
         for touple in keys_values:
             self.storage[touple.key] = touple.value
+
 
 class KVStorageReplicasService(KVStorageSimpleService):
     role: Role
@@ -104,43 +107,91 @@ class KVStorageReplicasService(KVStorageSimpleService):
     def __init__(self, consistency_level: int):
         super().__init__()
         self.consistency_level = consistency_level
-        """
-        To fill with your code
-        """
+        self.notify_set = []
+        self.others_set = []
 
     def l_pop(self, key: int) -> str:
-        """
-        To fill with your code
-        """
+        return super().l_pop(key)
 
     def r_pop(self, key: int) -> str:
-        """
-        To fill with your code
-        """
+        return super().r_pop(key)
 
     def put(self, key: int, value: str):
-        """
-        To fill with your code
-        """
+        super().put(
+            key=key,
+            value=value
+        )
+        for replica in self.notify_set:
+            KVStoreStub(grpc.insecure_channel(replica)).Put(PutRequest(
+                key=key,
+                value=value
+            ))
 
     def append(self, key: int, value: str):
-        """
-        To fill with your code
-        """
+        super().append(
+            key=key,
+            value=value
+        )
+        for replica in self.notify_set:
+            KVStoreStub(grpc.insecure_channel(replica)).Append(AppendRequest(
+                key=key,
+                value=value
+            ))
 
     def add_replica(self, server: str):
-        """
-        To fill with your code
-        """
+        if self.consistency_level > len(self.notify_set):
+            self.notify_set.append(server)
+        else:
+            self.others_set.append(server)
+
+
+        self.__forwardAllData(server)
+
+    def __forwardAllData(self, server: str):
+        touples = []
+        for k, v in self.storage.items():
+            touples.append(
+                KeyValue(
+                    key=k,
+                    value=v
+                )
+            )
+        # print(f"server: {server}, tuplas: {touples}")
+        if touples:
+            dest_server_channel = grpc.insecure_channel(server)
+            print(f"intentando conectar al server {server}")
+            KVStoreStub(dest_server_channel).Transfer(
+                TransferRequest(keys_values=touples)
+            )
 
     def remove_replica(self, server: str):
-        """
-        To fill with your code
-        """
+        if server in self.notify_set:
+            self.notify_set.remove(server)
+            self.notify_set.append(self.others_set.pop())
+        elif server in self.others_set:
+            self.others_set.remove(server)
+        else:
+            print("server a borrar no existe")
 
     def set_role(self, role: Role):
         logger.info(f"Got role {role}")
         self.role = role
+
+        scheduler = sched.scheduler(time.monotonic,
+                                    time.sleep)
+
+        def eventual_consistency():
+            if self.others_set:
+                for unconsistent_replica in self.others_set:
+                    self.__forwardAllData(unconsistent_replica)
+
+        def run_Event():
+            eventual_consistency()
+            scheduler.enter(EVENTUAL_CONSISTENCY_INTERVAL, 1, run_Event)
+
+        if role == 0:
+            scheduler.enter(EVENTUAL_CONSISTENCY_INTERVAL, 1, run_Event)
+            scheduler.run()
 
 
 class KVStorageServicer(KVStoreServicer):
@@ -210,11 +261,17 @@ class KVStorageServicer(KVStoreServicer):
         return google_dot_protobuf_dot_empty__pb2.Empty()
 
     def AddReplica(self, request: ServerRequest, context) -> google_dot_protobuf_dot_empty__pb2.Empty:
-        """
-        To fill with your code
-        """
+        self.kv_lock.acquire()
+        self.storage_service.add_replica(
+            server=request.server
+        )
+        self.kv_lock.release()
+        return google_dot_protobuf_dot_empty__pb2.Empty()
 
     def RemoveReplica(self, request: ServerRequest, context) -> google_dot_protobuf_dot_empty__pb2.Empty:
-        """
-        To fill with your code
-        """
+        self.kv_lock.acquire()
+        self.storage_service.remove_replica(
+            server=request.server
+        )
+        self.kv_lock.release()
+        return google_dot_protobuf_dot_empty__pb2.Empty()

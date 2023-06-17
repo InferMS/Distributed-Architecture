@@ -109,29 +109,66 @@ class ShardClient(SimpleClient):
             value=value
         ))
 
+
 class ShardReplicaClient(ShardClient):
 
     def get(self, key: int) -> Union[str, None]:
-        """
-        To fill with your code
-        """
+        response = self.stub.QueryReplica(
+            QueryReplicaRequest(
+                key=key,
+                operation=Operation.Value("GET")
+            )
+        )
+        kvChannel = grpc.insecure_channel(response.server)
+        kvStub = KVStoreStub(kvChannel)
+        return _get_return(kvStub.Get(GetRequest(key=key)))
 
     def l_pop(self, key: int) -> Union[str, None]:
-        """
-        To fill with your code
-        """
+        response = self.stub.QueryReplica(
+            QueryReplicaRequest(
+                key=key,
+                operation=Operation.Value("L_POP")
+            )
+        )
+        kvChannel = grpc.insecure_channel(response.server)
+        kvStub = KVStoreStub(kvChannel)
+        return _get_return(kvStub.LPop(GetRequest(key=key)))
 
     def r_pop(self, key: int) -> Union[str, None]:
-        """
-        To fill with your code
-        """
+        response = self.stub.QueryReplica(
+            QueryReplicaRequest(
+                key=key,
+                operation=Operation.Value("R_POP")
+            )
+        )
+        kvChannel = grpc.insecure_channel(response.server)
+        kvStub = KVStoreStub(kvChannel)
+        return _get_return(kvStub.RPop(GetRequest(key=key)))
 
     def put(self, key: int, value: str):
-        """
-        To fill with your code
-        """
+        response = self.stub.QueryReplica(
+            QueryReplicaRequest(
+                key=key,
+                operation=Operation.Value("PUT")
+            )
+        )
+        kvChannel = grpc.insecure_channel(response.server)
+        kvStub = KVStoreStub(kvChannel)
+        kvStub.Put(PutRequest(
+            key=key,
+            value=value
+        ))
 
     def append(self, key: int, value: str):
-        """
-        To fill with your code
-        """
+        response = self.stub.QueryReplica(
+            QueryReplicaRequest(
+                key=key,
+                operation=Operation.Value("APPEND")
+            )
+        )
+        kvChannel = grpc.insecure_channel(response.server)
+        kvStub = KVStoreStub(kvChannel)
+        kvStub.Append(AppendRequest(
+            key=key,
+            value=value,
+        ))
